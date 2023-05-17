@@ -52,6 +52,7 @@ QueueHandle_t ecg007_queue;
 esp_err_t config_leds(void);
 //void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t outputSize, uint8_t *counter);
 void sendEcg007Data(uint8_t* data, uint32_t data_size);
+void sendPM6750Data(uint8_t* data,uint32_t data_size);
 /* TASKS */
 static void uart_task(void *pvParameters);
 
@@ -108,10 +109,9 @@ static void uart_task(void *pvParameters)
 
                     // ecg007SplitData(0xFB,&data[i],example_arr,7,&counter_example);
                    // ecg007SplitData(0xFB, data[i], example_arr, 7, &counter_example);
-                   //uart_write_bytes(UART_NUM, (const char *)data, event.size);
-                   sendEcg007Data(data,event.size);
-                //  uart_write_bytes(UART_NUM, (const char *)data, event.size);
-
+               //    sendEcg007Data(data,event.size);
+               sendPM6750Data(data,event.size);
+                // uart_write_bytes(UART_NUM, (const char *)data, event.size);
                 // ecg007SplitData()0xFB, data, &example_arr, 7, &counter_example);
                 // uart_write_bytes(UART_NUM, (const char *)data, event.size);
                 uart_flush(UART_NUM); // limpieza del buffer de entrada para evitar overflow
@@ -120,14 +120,19 @@ static void uart_task(void *pvParameters)
             default:
                 break;
             }
+        }else{
+            ESP_LOGE(TAG,"Error de recepcion de dato");
         }
+
     }
 }
+
+
 
 static void init_uart(void)
 {
     uart_config_t uart_config = {
-        .baud_rate = 38400, // 38400
+        .baud_rate = 115200, // 38400 ecg007  115200 pm6750
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -136,7 +141,7 @@ static void init_uart(void)
 
     uart_param_config(UART_NUM, &uart_config);
     uart_set_pin(UART_NUM, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    uart_driver_install(UART_NUM, BUF_SIZE, BUF_SIZE, 5, &uart_queue, 0);
+    uart_driver_install(UART_NUM, BUF_SIZE, BUF_SIZE, 200, &uart_queue, 0);
     xTaskCreate(uart_task, "uart_task", TASK_MEMORY, NULL, 5, NULL);
     // ESP_LOGI(TAG, "Init uart completed");
 }
@@ -413,6 +418,16 @@ void sendEcg007Data(uint8_t* data,uint32_t data_size){
         sprintf(&data_parsed[i*2],"%02x",data[i]);
     }
     esp_mqtt_client_publish(client, "/sensor/ecg007", data_parsed, data_size, 0, 0);
+}
+
+void sendPM6750Data(uint8_t* data,uint32_t data_size){
+    for (size_t i = 0; i < data_size; i++)
+    {
+        sprintf(&data_parsed[i*2],"%02x",data[i]);
+    }
+  esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, data_size, 1, 0);
+  printf("%s",data_parsed);
+  printf("\n");
 }
 
 
