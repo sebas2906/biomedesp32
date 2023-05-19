@@ -50,17 +50,19 @@ static QueueHandle_t uart_queue;
 QueueHandle_t ecg007_queue;
 
 esp_err_t config_leds(void);
-//void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t outputSize, uint8_t *counter);
-void sendEcg007Data(uint8_t* data, uint32_t data_size);
-void sendPM6750Data(uint8_t* data,uint32_t data_size);
+// void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t outputSize, uint8_t *counter);
+void sendEcg007Data(uint8_t *data, uint32_t data_size);
+void sendPM6750Data(uint8_t *data, uint32_t data_size);
 /* TASKS */
 static void uart_task(void *pvParameters);
 
 static esp_mqtt_client_handle_t client;
 
-//char* example_arr;
+// char* example_arr;
 char *data_parsed;
 uint8_t counter_example = 0;
+
+uint8_t mqtt_sended = true;
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -99,35 +101,36 @@ static void uart_task(void *pvParameters)
     uint8_t *data = (uint8_t *)malloc(BUF_SIZE);
     while (1)
     {
-        if (xQueueReceive(uart_queue, (void *)&event, portMAX_DELAY))
-        {
-            bzero(data, BUF_SIZE);
-            switch (event.type)
+        /* if (true)
+        { */
+            if (xQueueReceive(uart_queue, (void *)&event, portMAX_DELAY))
             {
-            case UART_DATA: // cuando se recibe data en el puerto serial
-                uart_read_bytes(UART_NUM, data, event.size, pdMS_TO_TICKS(100));
+                bzero(data, BUF_SIZE);
+                switch (event.type)
+                {
+                case UART_DATA: // cuando se recibe data en el puerto serial
+                    uart_read_bytes(UART_NUM, data, event.size, pdMS_TO_TICKS(100));
+                    //    sendEcg007Data(data,event.size);
+                    sendPM6750Data(data, event.size);
+                    // uart_write_bytes(UART_NUM, (const char *)data, event.size);
+                 //   uart_flush(UART_NUM); // limpieza del buffer de entrada para evitar overflow
+                    break;
 
-                    // ecg007SplitData(0xFB,&data[i],example_arr,7,&counter_example);
-                   // ecg007SplitData(0xFB, data[i], example_arr, 7, &counter_example);
-               //    sendEcg007Data(data,event.size);
-               sendPM6750Data(data,event.size);
-                // uart_write_bytes(UART_NUM, (const char *)data, event.size);
-                // ecg007SplitData()0xFB, data, &example_arr, 7, &counter_example);
-                // uart_write_bytes(UART_NUM, (const char *)data, event.size);
-                uart_flush(UART_NUM); // limpieza del buffer de entrada para evitar overflow
-                break;
-
-            default:
-                break;
+                default:
+                    break;
+                }
             }
-        }else{
-            ESP_LOGE(TAG,"Error de recepcion de dato");
-        }
-
+            else
+            {
+                ESP_LOGE(TAG, "Error de recepcion de dato");
+            }
+       /*  }
+        else
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+        } */
     }
 }
-
-
 
 static void init_uart(void)
 {
@@ -141,7 +144,7 @@ static void init_uart(void)
 
     uart_param_config(UART_NUM, &uart_config);
     uart_set_pin(UART_NUM, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    uart_driver_install(UART_NUM, BUF_SIZE, BUF_SIZE, 200, &uart_queue, 0);
+    uart_driver_install(UART_NUM, BUF_SIZE, BUF_SIZE, 1000, &uart_queue, 0);
     xTaskCreate(uart_task, "uart_task", TASK_MEMORY, NULL, 5, NULL);
     // ESP_LOGI(TAG, "Init uart completed");
 }
@@ -202,7 +205,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        // ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        mqtt_sended = true;
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
@@ -338,7 +342,7 @@ void wifi_init_sta(void)
 
 void app_main(void)
 {
-    data_parsed=(char*) malloc(1024);
+    data_parsed = (char *)malloc(1024);
     ESP_LOGI(TAG, "[APP] Startup..");
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
@@ -382,8 +386,8 @@ void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t 
     {
 
         // Add the byte to the output buffer
-        sprintf(&output[(dataIndex++)*2], "%02X", dataByte);
-      //  output[dataIndex++] = dataByte;
+        sprintf(&output[(dataIndex++) * 2], "%02X", dataByte);
+        //  output[dataIndex++] = dataByte;
         if (dataIndex >= outputSize)
         {
             // Reached end of data sequence, reset flags
@@ -394,14 +398,14 @@ void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t 
             /*  for (int i = 0; i < outputSize; i++) {
                  printf("%02x ", output[i]);
              } */
-         //   uart_write_bytes(UART_NUM, output, outputSize);
-         printf("%s",output);
-          printf("\n");
-           // esp_mqtt_client_publish(client, "/topic/qos0", output, outputSize, 0, 0);
+            //   uart_write_bytes(UART_NUM, output, outputSize);
+            printf("%s", output);
+            printf("\n");
+            // esp_mqtt_client_publish(client, "/topic/qos0", output, outputSize, 0, 0);
             //  printf("\n");
 
             // Increment the counter of data sequences
-          //  (*counter)++;
+            //  (*counter)++;
         }
     }
     // Check if the current byte is the start byte
@@ -412,22 +416,26 @@ void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t 
     }
 }
 
-void sendEcg007Data(uint8_t* data,uint32_t data_size){
+void sendEcg007Data(uint8_t *data, uint32_t data_size)
+{
     for (size_t i = 0; i < data_size; i++)
     {
-        sprintf(&data_parsed[i*2],"%02x",data[i]);
+        sprintf(&data_parsed[i * 2], "%02x", data[i]);
     }
     esp_mqtt_client_publish(client, "/sensor/ecg007", data_parsed, data_size, 0, 0);
 }
 
-void sendPM6750Data(uint8_t* data,uint32_t data_size){
+void sendPM6750Data(uint8_t *data, uint32_t data_size)
+{
     for (size_t i = 0; i < data_size; i++)
     {
-        sprintf(&data_parsed[i*2],"%02x",data[i]);
+        sprintf(&data_parsed[i * 2], "%02x", data[i]);
     }
-  esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, data_size, 1, 0);
-  printf("%s",data_parsed);
-  printf("\n");
+    mqtt_sended=false;
+    esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, data_size * 2, 1, 0);
+    while(!mqtt_sended) vTaskDelay(pdMS_TO_TICKS(100));
+    //vTaskDelay(pdMS_TO_TICKS(3000));
+    printf("%s %d", data_parsed, data_size * 2);
+    printf("\n");
+    bzero(data_parsed, data_size*2);
 }
-
-
