@@ -64,7 +64,7 @@ char *data_parsed;
 uint8_t counter_example = 0;
 
 uint8_t mqtt_sended = true;
-int counter = 0;
+//int counter = 0;
 
 // char data_to_send[1000]; // data que se acumulara para enviar data por MQTT
 
@@ -516,8 +516,8 @@ void sendPM6750Data(uint8_t *data, uint32_t data_size)
     esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, 0 , 1, 0);
     // while(!mqtt_sended) vTaskDelay(pdMS_TO_TICKS(100));
     // esp_mqtt_client_enqueue(client,"/sensor/pm6750", data_parsed, 0, 0, 0, false);
-    counter++;//To-DO: retirar este contador
-    printf("%s %d %d", data_parsed, data_size * 2, counter);
+   // counter++;//To-DO: retirar este contador
+    printf("%s %d", data_parsed, data_size * 2);
     printf("\n");
-   // vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
