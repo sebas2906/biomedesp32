@@ -54,6 +54,7 @@ esp_err_t config_leds(void);
 // void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t outputSize, uint8_t *counter);
 void sendEcg007Data(uint8_t *data, uint32_t data_size);
 void sendPM6750Data(uint8_t *data, uint32_t data_size);
+void hexStringToByteArray(const char *hexString, unsigned char *byteArray);
 /* TASKS */
 static void uart_task(void *pvParameters);
 
@@ -64,7 +65,7 @@ char *data_parsed;
 uint8_t counter_example = 0;
 
 uint8_t mqtt_sended = true;
-//int counter = 0;
+// int counter = 0;
 
 // char data_to_send[1000]; // data que se acumulara para enviar data por MQTT
 
@@ -98,6 +99,18 @@ struct ECG007 ecg007={
     0x00000000,
 }; */
 // static const char *TAG = "UART";
+void hexStringToByteArray(const char *hexString, unsigned char *byteArray)
+{
+    size_t length = strlen(hexString);
+    size_t i;
+
+    for (i = 0; i < length / 2; i++)
+    {
+        char hex[3] = {hexString[i * 2], hexString[i * 2 + 1], '\0'};
+        byteArray[i] = (unsigned char)strtol(hex, NULL, 16);
+    }
+}
+
 static void uart_task(void *pvParameters)
 {
     uart_event_t event;
@@ -124,7 +137,7 @@ static void uart_task(void *pvParameters)
                 //   uart_flush(UART_NUM); // limpieza del buffer de entrada para evitar overflow
                 break;
             case UART_FIFO_OVF:
-                ESP_LOGI(TAG, "hw fifo overflow");
+                // ESP_LOGI(TAG, "hw fifo overflow");////////////////////////////////
                 // If fifo overflow happened, you should consider adding flow control for your application.
                 // The ISR has already reset the rx FIFO,
                 // As an example, we directly flush the rx buffer here in order to read more data.
@@ -133,7 +146,7 @@ static void uart_task(void *pvParameters)
                 break;
             // Event of UART ring buffer full
             case UART_BUFFER_FULL:
-                ESP_LOGI(TAG, "ring buffer full");////////////////////BINGO!
+                // ESP_LOGI(TAG, "ring buffer full");////////////////////!!!!!!!!!!!!!!!!!!!!!!
                 // If buffer full happened, you should consider increasing your buffer size
                 // As an example, we directly flush the rx buffer here in order to read more data.
                 uart_flush_input(UART_NUM);
@@ -153,25 +166,25 @@ static void uart_task(void *pvParameters)
                 break;
             // UART_PATTERN_DET
             case UART_PATTERN_DET: // patrones para comandos https://github.com/espressif/esp-idf/blob/d00e7b5af897cc5fafe51fae19c57f0313b81edf/examples/peripherals/uart/uart_events/main/uart_events_example_main.c
-             /*    uart_get_buffered_data_len(UART_NUM, &buffered_size);
-                int pos = uart_pattern_pop_pos(UART_NUM);
-                ESP_LOGI(TAG, "[UART PATTERN DETECTED] pos: %d, buffered size: %d", pos, buffered_size);
-                if (pos == -1)
-                {
-                    // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
-                    // record the position. We should set a larger queue size.
-                    // As an example, we directly flush the rx buffer here.
-                    uart_flush_input(UART_NUM);
-                }
-                else
-                {
-                    uart_read_bytes(UART_NUM, dtmp, pos, 100 / portTICK_PERIOD_MS);
-                    uint8_t pat[PATTERN_CHR_NUM + 1];
-                    memset(pat, 0, sizeof(pat));
-                    uart_read_bytes(EX_UART_NUM, pat, PATTERN_CHR_NUM, 100 / portTICK_PERIOD_MS);
-                    ESP_LOGI(TAG, "read data: %s", dtmp);
-                    ESP_LOGI(TAG, "read pat : %s", pat);
-                } */
+                                   /*    uart_get_buffered_data_len(UART_NUM, &buffered_size);
+                                      int pos = uart_pattern_pop_pos(UART_NUM);
+                                      ESP_LOGI(TAG, "[UART PATTERN DETECTED] pos: %d, buffered size: %d", pos, buffered_size);
+                                      if (pos == -1)
+                                      {
+                                          // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
+                                          // record the position. We should set a larger queue size.
+                                          // As an example, we directly flush the rx buffer here.
+                                          uart_flush_input(UART_NUM);
+                                      }
+                                      else
+                                      {
+                                          uart_read_bytes(UART_NUM, dtmp, pos, 100 / portTICK_PERIOD_MS);
+                                          uint8_t pat[PATTERN_CHR_NUM + 1];
+                                          memset(pat, 0, sizeof(pat));
+                                          uart_read_bytes(EX_UART_NUM, pat, PATTERN_CHR_NUM, 100 / portTICK_PERIOD_MS);
+                                          ESP_LOGI(TAG, "read data: %s", dtmp);
+                                          ESP_LOGI(TAG, "read pat : %s", pat);
+                                      } */
                 break;
 
             default:
@@ -237,17 +250,17 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+        /*   msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
+          ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id); */
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+        msg_id = esp_mqtt_client_subscribe(client, "/esp32", 0);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        /*         msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+                ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-        msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+                msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
+                ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id); */
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -266,9 +279,21 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         mqtt_sended = true;
         break;
     case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
+        //  ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        unsigned char *byteArray = malloc(event->data_len);
+        hexStringToByteArray(event->data, byteArray);
+        uart_write_bytes(UART_NUM, byteArray, (event->data_len) / 2);
+ /*        for (size_t i = 0; i < (event->data_len) / 2; i++)
+        {
+            printf("%02X ", byteArray[i]);
+        }
+        printf("\n");
+ */
+        free(byteArray);
+
+        /* printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        printf("DATA=%.*s\r\n", event->data_len, event->data); */
+
         break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -513,11 +538,11 @@ void sendPM6750Data(uint8_t *data, uint32_t data_size)
            bzero(data_to_send, sizeof(data_to_send) / sizeof(data_to_send[0]));
            free(resultado);
        } */
-    esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, 0 , 1, 0);
+    esp_mqtt_client_publish(client, "/sensor/pm6750", data_parsed, 0, 1, 0);
     // while(!mqtt_sended) vTaskDelay(pdMS_TO_TICKS(100));
     // esp_mqtt_client_enqueue(client,"/sensor/pm6750", data_parsed, 0, 0, 0, false);
-   // counter++;//To-DO: retirar este contador
-    printf("%s %d", data_parsed, data_size * 2);
-    printf("\n");
+    // counter++;//To-DO: retirar este contador
+    // printf("%s %d", data_parsed, data_size * 2);
+    //  printf("\n");
     vTaskDelay(pdMS_TO_TICKS(10));
 }
