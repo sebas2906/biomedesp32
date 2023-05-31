@@ -458,45 +458,6 @@ void app_main(void)
       }*/
 }
 
-void ecg007SplitData(uint8_t startByte, uint8_t dataByte, char *output, uint8_t outputSize, uint8_t *counter)
-{
-    static bool inData = false;
-    static uint8_t dataIndex = 0;
-
-    // Check if we are currently in a data sequence
-    if (inData)
-    {
-
-        // Add the byte to the output buffer
-        sprintf(&output[(dataIndex++) * 2], "%02X", dataByte);
-        //  output[dataIndex++] = dataByte;
-        if (dataIndex >= outputSize)
-        {
-            // Reached end of data sequence, reset flags
-            inData = false;
-            dataIndex = 0;
-
-            // Print the data sequence
-            /*  for (int i = 0; i < outputSize; i++) {
-                 printf("%02x ", output[i]);
-             } */
-            //   uart_write_bytes(UART_NUM, output, outputSize);
-            printf("%s", output);
-            printf("\n");
-            // esp_mqtt_client_publish(client, "/topic/qos0", output, outputSize, 0, 0);
-            //  printf("\n");
-
-            // Increment the counter of data sequences
-            //  (*counter)++;
-        }
-    }
-    // Check if the current byte is the start byte
-    if (dataByte == startByte)
-    {
-        inData = true;
-        dataIndex = 0;
-    }
-}
 
 void sendEcg007Data(uint8_t *data, uint32_t data_size)
 {
