@@ -7,6 +7,9 @@
     "array": "c",
     "string": "c",
     "string_view": "c",
-    "regex": "c"
+    "regex": "c",
+    "bitset": "c",
+    "initializer_list": "c",
+    "utility": "c"
   }
 }
